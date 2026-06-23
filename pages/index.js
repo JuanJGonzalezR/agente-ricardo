@@ -1,78 +1,519 @@
-import Image from "next/image";
-import { Geist, Geist_Mono } from "next/font/google";
+import { useState } from "react";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const VENDEDORES = [
+  { nombre: "Jorge Echeveste", clave: "JORGE_E", inicial: "JE" },
+  { nombre: "Alan", clave: "ALAN", inicial: "AL" },
+  { nombre: "Bobby", clave: "BOBBY", inicial: "BO" },
+  { nombre: "Arturo (Curro)", clave: "CURRO", inicial: "AC" },
+  { nombre: "Manolo", clave: "MANOLO", inicial: "MA" },
+  { nombre: "Montserrat", clave: "MONTSE", inicial: "MO" },
+  { nombre: "Israel Nazareno", clave: "ISRAEL", inicial: "IN" },
+  { nombre: "Arturo Anaya", clave: "ARTURO_A", inicial: "AA" },
+  { nombre: "Ing. Gerardo", clave: "GERARDO", inicial: "GE" },
+  { nombre: "Jonathan", clave: "JONATHAN", inicial: "JO" },
+  { nombre: "Jorge Ramos", clave: "JORGE_R", inicial: "JR" },
+  { nombre: "Marco", clave: "MARCO", inicial: "MR" },
+  { nombre: "Rodrigo", clave: "RODRIGO", inicial: "RO" },
+  { nombre: "Ricardo Gárate", clave: "RICARDO", inicial: "RG", director: true },
+];
 
 export default function Home() {
-  return (
-    <div
-      className={`${geistSans.className} ${geistMono.className} flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black`}
-    >
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the index.js file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+  const [pantalla, setPantalla] = useState("inicio"); // inicio | pin | agente
+  const [vendedorSeleccionado, setVendedorSeleccionado] = useState(null);
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState("");
+  const [cargando, setCargando] = useState(false);
+  const [intentos, setIntentos] = useState(0);
+
+  const seleccionarVendedor = (vendedor) => {
+    setVendedorSeleccionado(vendedor);
+    setPin("");
+    setError("");
+    setPantalla("pin");
+  };
+
+  const ingresarDigito = (digito) => {
+    if (pin.length < 4) {
+      const nuevoPin = pin + digito;
+      setPin(nuevoPin);
+      if (nuevoPin.length === 4) {
+        validarPin(nuevoPin);
+      }
+    }
+  };
+
+  const borrarDigito = () => {
+    setPin(pin.slice(0, -1));
+    setError("");
+  };
+
+  const validarPin = async (pinIngresado) => {
+    if (intentos >= 3) {
+      setError("Demasiados intentos. Espera un momento.");
+      return;
+    }
+    setCargando(true);
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clave: vendedorSeleccionado.clave,
+          pin: pinIngresado,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setPantalla("agente");
+        setIntentos(0);
+      } else {
+        setIntentos((i) => i + 1);
+        setError(intentos >= 2 ? "Acceso bloqueado temporalmente." : "PIN incorrecto. Intenta de nuevo.");
+        setPin("");
+      }
+    } catch {
+      setError("Error de conexión. Intenta de nuevo.");
+      setPin("");
+    }
+    setCargando(false);
+  };
+
+  const cerrarSesion = () => {
+    setPantalla("inicio");
+    setVendedorSeleccionado(null);
+    setPin("");
+    setError("");
+    setIntentos(0);
+  };
+
+  // ── PANTALLA INICIO ──────────────────────────────────────────
+  if (pantalla === "inicio") {
+    return (
+      <div style={estilos.contenedor}>
+        <div style={estilos.header}>
+          <div style={estilos.logo}>NANOSCHUTZ</div>
+          <div style={estilos.logoSub}>Agente Ricardo</div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+        <p style={estilos.instruccion}>¿Quién eres?</p>
+        <div style={estilos.listaVendedores}>
+          {VENDEDORES.filter(v => !v.director).map((v) => (
+            <button
+              key={v.clave}
+              style={estilos.cardVendedor}
+              onClick={() => seleccionarVendedor(v)}
+            >
+              <div style={estilos.avatar}>{v.inicial}</div>
+              <span style={estilos.nombreVendedor}>{v.nombre}</span>
+              <span style={estilos.chevron}>›</span>
+            </button>
+          ))}
+          <button
+            key="RICARDO"
+            style={{ ...estilos.cardVendedor, ...estilos.cardDirector }}
+            onClick={() => seleccionarVendedor(VENDEDORES.find(v => v.director))}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+            <div style={{ ...estilos.avatar, ...estilos.avatarDirector }}>RG</div>
+            <span style={estilos.nombreVendedor}>Ricardo Gárate</span>
+            <span style={{ ...estilos.badge }}>Director</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── PANTALLA PIN ─────────────────────────────────────────────
+  if (pantalla === "pin") {
+    return (
+      <div style={estilos.contenedor}>
+        <button style={estilos.btnVolver} onClick={() => setPantalla("inicio")}>
+          ← Volver
+        </button>
+        <div style={estilos.pinHeader}>
+          <div style={vendedorSeleccionado.director ? { ...estilos.avatar, ...estilos.avatarDirector, ...estilos.avatarGrande } : { ...estilos.avatar, ...estilos.avatarGrande }}>
+            {vendedorSeleccionado.inicial}
+          </div>
+          <p style={estilos.pinNombre}>{vendedorSeleccionado.nombre}</p>
+          <p style={estilos.pinLabel}>Ingresa tu PIN</p>
+        </div>
+
+        <div style={estilos.puntosContainer}>
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              style={pin.length > i ? estilos.puntoActivo : estilos.punto}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs/pages/getting-started?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          ))}
         </div>
-      </main>
-    </div>
-  );
+
+        {error && <p style={estilos.error}>{error}</p>}
+        {cargando && <p style={estilos.cargando}>Verificando...</p>}
+
+        <div style={estilos.teclado}>
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+            <button
+              key={n}
+              style={estilos.tecla}
+              onClick={() => ingresarDigito(String(n))}
+              disabled={cargando || pin.length === 4}
+            >
+              {n}
+            </button>
+          ))}
+          <div style={estilos.teclaVacia} />
+          <button
+            style={estilos.tecla}
+            onClick={() => ingresarDigito("0")}
+            disabled={cargando || pin.length === 4}
+          >
+            0
+          </button>
+          <button
+            style={estilos.teclaBorrar}
+            onClick={borrarDigito}
+            disabled={cargando}
+          >
+            ⌫
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── PANTALLA AGENTE ──────────────────────────────────────────
+  if (pantalla === "agente") {
+    return (
+      <div style={estilos.contenedor}>
+        <div style={estilos.agenteHeader}>
+          <div style={estilos.agenteInfo}>
+            <span style={estilos.agenteNombre}>
+              {vendedorSeleccionado.director ? "👔 " : "👋 "}
+              {vendedorSeleccionado.nombre}
+            </span>
+            <button style={estilos.btnCerrar} onClick={cerrarSesion}>
+              Salir
+            </button>
+          </div>
+        </div>
+        <div style={estilos.chatArea}>
+          <div style={estilos.mensajeBienvenida}>
+            {vendedorSeleccionado.director ? (
+              <>
+                <p style={estilos.mensajeTexto}>
+                  Bienvenido Ricardo. Aquí tienes el estado del equipo comercial.
+                  ¿Qué quieres revisar hoy?
+                </p>
+                <div style={estilos.opcionesDirector}>
+                  <button style={estilos.opcion}>📊 Estado del equipo</button>
+                  <button style={estilos.opcion}>🚨 Alertas del día</button>
+                  <button style={estilos.opcion}>📈 Oportunidades en riesgo</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p style={estilos.mensajeTexto}>
+                  Hola {vendedorSeleccionado.nombre.split(" ")[0]}. ¿Qué hacemos hoy?
+                </p>
+                <div style={estilos.opcionesVendedor}>
+                  <button style={estilos.opcion}>📋 Reportar actividades</button>
+                  <button style={estilos.opcion}>🏢 Actualizar oportunidades</button>
+                  <button style={estilos.opcion}>📅 Agendar visita</button>
+                  <button style={estilos.opcion}>📍 Registrar llegada</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+        <div style={estilos.inputArea}>
+          <input
+            style={estilos.inputChat}
+            placeholder="Escribe aquí..."
+            disabled
+          />
+          <button style={estilos.btnEnviar}>›</button>
+        </div>
+      </div>
+    );
+  }
 }
+
+// ── ESTILOS ───────────────────────────────────────────────────
+const estilos = {
+  contenedor: {
+    minHeight: "100vh",
+    backgroundColor: "#0D0D0D",
+    color: "#FFFFFF",
+    fontFamily: "'Inter', -apple-system, sans-serif",
+    display: "flex",
+    flexDirection: "column",
+    maxWidth: "430px",
+    margin: "0 auto",
+    padding: "0 0 40px 0",
+  },
+  header: {
+    padding: "40px 24px 16px",
+    borderBottom: "1px solid #1A1A1A",
+  },
+  logo: {
+    fontSize: "11px",
+    letterSpacing: "4px",
+    color: "#00C896",
+    fontWeight: "700",
+  },
+  logoSub: {
+    fontSize: "28px",
+    fontWeight: "700",
+    color: "#FFFFFF",
+    marginTop: "4px",
+  },
+  instruccion: {
+    padding: "24px 24px 8px",
+    fontSize: "13px",
+    color: "#666666",
+    letterSpacing: "1px",
+    textTransform: "uppercase",
+    margin: 0,
+  },
+  listaVendedores: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "2px",
+    padding: "0 16px",
+  },
+  cardVendedor: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    backgroundColor: "#141414",
+    border: "none",
+    borderRadius: "12px",
+    padding: "14px 16px",
+    cursor: "pointer",
+    color: "#FFFFFF",
+    textAlign: "left",
+    transition: "background 0.15s",
+    width: "100%",
+  },
+  cardDirector: {
+    marginTop: "12px",
+    backgroundColor: "#0F1F18",
+    border: "1px solid #00C89633",
+  },
+  avatar: {
+    width: "36px",
+    height: "36px",
+    borderRadius: "10px",
+    backgroundColor: "#1E1E1E",
+    color: "#888888",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "11px",
+    fontWeight: "700",
+    letterSpacing: "0.5px",
+    flexShrink: 0,
+  },
+  avatarDirector: {
+    backgroundColor: "#00C89622",
+    color: "#00C896",
+  },
+  avatarGrande: {
+    width: "64px",
+    height: "64px",
+    borderRadius: "20px",
+    fontSize: "18px",
+    margin: "0 auto 12px",
+  },
+  nombreVendedor: {
+    flex: 1,
+    fontSize: "15px",
+    fontWeight: "500",
+    color: "#EEEEEE",
+  },
+  chevron: {
+    color: "#444444",
+    fontSize: "20px",
+  },
+  badge: {
+    fontSize: "11px",
+    color: "#00C896",
+    fontWeight: "600",
+    letterSpacing: "0.5px",
+    backgroundColor: "#00C89615",
+    padding: "3px 8px",
+    borderRadius: "6px",
+  },
+  btnVolver: {
+    background: "none",
+    border: "none",
+    color: "#666666",
+    fontSize: "14px",
+    padding: "24px",
+    cursor: "pointer",
+    alignSelf: "flex-start",
+  },
+  pinHeader: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    padding: "8px 24px 24px",
+  },
+  pinNombre: {
+    fontSize: "20px",
+    fontWeight: "700",
+    margin: "0 0 4px",
+    color: "#FFFFFF",
+  },
+  pinLabel: {
+    fontSize: "13px",
+    color: "#666666",
+    margin: 0,
+  },
+  puntosContainer: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "16px",
+    padding: "24px 0",
+  },
+  punto: {
+    width: "14px",
+    height: "14px",
+    borderRadius: "50%",
+    backgroundColor: "#222222",
+    border: "2px solid #333333",
+  },
+  puntoActivo: {
+    width: "14px",
+    height: "14px",
+    borderRadius: "50%",
+    backgroundColor: "#00C896",
+    border: "2px solid #00C896",
+  },
+  error: {
+    color: "#FF4444",
+    textAlign: "center",
+    fontSize: "13px",
+    margin: "0 0 16px",
+    padding: "0 24px",
+  },
+  cargando: {
+    color: "#00C896",
+    textAlign: "center",
+    fontSize: "13px",
+    margin: "0 0 16px",
+  },
+  teclado: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "8px",
+    padding: "0 32px",
+    marginTop: "8px",
+  },
+  tecla: {
+    backgroundColor: "#1A1A1A",
+    border: "none",
+    borderRadius: "14px",
+    color: "#FFFFFF",
+    fontSize: "22px",
+    fontWeight: "400",
+    padding: "20px",
+    cursor: "pointer",
+    transition: "background 0.1s",
+  },
+  teclaBorrar: {
+    backgroundColor: "#1A1A1A",
+    border: "none",
+    borderRadius: "14px",
+    color: "#888888",
+    fontSize: "20px",
+    padding: "20px",
+    cursor: "pointer",
+  },
+  teclaVacia: {
+    backgroundColor: "transparent",
+  },
+  agenteHeader: {
+    borderBottom: "1px solid #1A1A1A",
+    padding: "20px 20px 16px",
+  },
+  agenteInfo: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  agenteNombre: {
+    fontSize: "16px",
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  btnCerrar: {
+    background: "none",
+    border: "1px solid #2A2A2A",
+    borderRadius: "8px",
+    color: "#666666",
+    fontSize: "12px",
+    padding: "6px 12px",
+    cursor: "pointer",
+  },
+  chatArea: {
+    flex: 1,
+    padding: "20px",
+    overflowY: "auto",
+  },
+  mensajeBienvenida: {
+    backgroundColor: "#141414",
+    borderRadius: "16px",
+    padding: "16px",
+  },
+  mensajeTexto: {
+    fontSize: "15px",
+    color: "#EEEEEE",
+    margin: "0 0 16px",
+    lineHeight: "1.5",
+  },
+  opcionesVendedor: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+  },
+  opcionesDirector: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+  },
+  opcion: {
+    backgroundColor: "#1E1E1E",
+    border: "1px solid #2A2A2A",
+    borderRadius: "10px",
+    color: "#EEEEEE",
+    fontSize: "14px",
+    padding: "12px 16px",
+    cursor: "pointer",
+    textAlign: "left",
+  },
+  inputArea: {
+    display: "flex",
+    gap: "8px",
+    padding: "12px 16px",
+    borderTop: "1px solid #1A1A1A",
+  },
+  inputChat: {
+    flex: 1,
+    backgroundColor: "#141414",
+    border: "1px solid #2A2A2A",
+    borderRadius: "12px",
+    color: "#FFFFFF",
+    fontSize: "15px",
+    padding: "12px 16px",
+    outline: "none",
+  },
+  btnEnviar: {
+    backgroundColor: "#00C896",
+    border: "none",
+    borderRadius: "12px",
+    color: "#000000",
+    fontSize: "22px",
+    fontWeight: "700",
+    width: "48px",
+    cursor: "pointer",
+  },
+};
