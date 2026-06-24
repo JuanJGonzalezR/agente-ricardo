@@ -1,24 +1,9 @@
-const REDIS_URL = process.env.KV_REST_API_URL;
-const REDIS_TOKEN = process.env.KV_REST_API_TOKEN;
+import { Redis } from "@upstash/redis";
 
-async function redisSet(key, value) {
-  const response = await fetch(`${REDIS_URL}/set/${key}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${REDIS_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify([key, JSON.stringify(value)]),
-  });
-  return response.json();
-}
-
-async function redisGet(key) {
-  const response = await fetch(`${REDIS_URL}/get/${key}`, {
-    headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
-  });
-  return response.json();
-}
+const redis = new Redis({
+  url: process.env.KV_REST_API_URL,
+  token: process.env.KV_REST_API_TOKEN,
+});
 
 export default async function handler(req, res) {
   const { method } = req;
@@ -27,17 +12,20 @@ export default async function handler(req, res) {
     if (method === "GET") {
       const { clave } = req.query;
       if (!clave) return res.status(400).json({ error: "Falta clave" });
-      const result = await redisGet(`vendor:${clave}`);
-      const memoria = result.result ? JSON.parse(result.result) : null;
-      return res.status(200).json({ memoria });
+
+      const memoria = await redis.get(`vendor:${clave}`);
+      // El SDK ya devuelve el objeto parseado, o null si no existe
+      const memoriaValida = memoria && typeof memoria === "object" && !Array.isArray(memoria) ? memoria : null;
+      return res.status(200).json({ memoria: memoriaValida });
     }
 
     if (method === "POST") {
       const { clave, datos } = req.body;
       if (!clave) return res.status(400).json({ error: "Falta clave" });
-      const prevResult = await redisGet(`vendor:${clave}`);
-      const memoriaPrevia = prevResult.result
-        ? JSON.parse(prevResult.result)
+
+      const previa = await redis.get(`vendor:${clave}`);
+      const memoriaPrevia = previa && typeof previa === "object" && !Array.isArray(previa)
+        ? previa
         : { sesiones: 0, pendientes: [], historial: [] };
 
       const nuevaMemoria = {
@@ -56,7 +44,7 @@ export default async function handler(req, res) {
         ],
       };
 
-      await redisSet(`vendor:${clave}`, nuevaMemoria);
+      await redis.set(`vendor:${clave}`, nuevaMemoria);
       return res.status(200).json({ ok: true, memoria: nuevaMemoria });
     }
 
