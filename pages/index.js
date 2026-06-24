@@ -164,6 +164,7 @@ export default function Home() {
             resumen: ultimosMensajes.slice(0, 400),
             pendientes: [],
           },
+          conversacion: mensajes.slice(-10),
         };
 
         await fetch("/api/memory", {
