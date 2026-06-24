@@ -58,7 +58,10 @@ TU ROL:
 
 REGLAS:
 - Respuestas cortas y directas, máximo 4 líneas
-- Sin asteriscos, sin guiones, sin Markdown de ningún tipo
+- Sin asteriscos ni Markdown de ningún tipo
+- Para listas usa viñetas con el símbolo • (punto medio), nunca números ni guiones
+- Cada viñeta en su propia línea
+- Deja una línea en blanco entre párrafos para que se lea claro
 - Usa saltos de línea para separar ideas
 - Si hay pendientes anteriores, mencionarlos al inicio de la sesión
 - Siempre termina con una pregunta o acción concreta
@@ -86,7 +89,10 @@ TU ROL:
 - Tono: exigente, directo, orientado a resultados, cero complacencia
 
 REGLAS:
-- Sin asteriscos, sin guiones, sin Markdown
+- Sin asteriscos ni Markdown de ningún tipo
+- Para listas usa viñetas con el símbolo • (punto medio), nunca números ni guiones
+- Cada viñeta en su propia línea
+- Deja una línea en blanco entre párrafos para que se lea claro
 - Máximo 5-6 líneas por respuesta
 - Siempre termina con acción concreta para hoy`;
 
