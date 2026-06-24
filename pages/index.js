@@ -285,7 +285,14 @@ export default function Home() {
         <div style={s.chatArea} ref={chatRef}>
           {mensajes.map((m, i) => (
             <div key={i} style={m.role === "user" ? s.bubbleUser : s.bubbleAgent}>
-              <p style={s.bubbleTexto}>{m.content}</p>
+              <p style={s.bubbleTexto}>
+                {m.content.split("\n").map((linea, idx) => (
+                  <span key={idx}>
+                    {linea}
+                    {idx < m.content.split("\n").length - 1 && <br />}
+                  </span>
+                ))}
+              </p>
             </div>
           ))}
           {enviando && (
