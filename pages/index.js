@@ -154,27 +154,28 @@ export default function Home() {
   };
 
   const cerrarSesion = async () => {
-    // Guardar resumen de sesión en Redis antes de salir
     if (vendedorSeleccionado && mensajes.length > 1) {
       try {
-        const ultimosMensajes = mensajes.slice(-4)
+        const ultimosMensajes = mensajes
+          .slice(-6)
           .map((m) => `${m.role === "user" ? "Vendedor" : "Agente"}: ${m.content}`)
           .join(" | ");
+
+        const body = {
+          clave: vendedorSeleccionado.clave,
+          datos: {
+            resumen: ultimosMensajes.slice(0, 400),
+            pendientes: [],
+          },
+        };
 
         await fetch("/api/memory", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "set",
-            clave: vendedorSeleccionado.clave,
-            datos: {
-              resumen: ultimosMensajes.slice(0, 300),
-              pendientes: [],
-            },
-          }),
+          body: JSON.stringify(body),
         });
-      } catch {
-        console.log("Error guardando memoria");
+      } catch (e) {
+        console.error("Error guardando memoria:", e);
       }
     }
 
