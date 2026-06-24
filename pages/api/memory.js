@@ -1,8 +1,20 @@
 const REDIS_URL = process.env.KV_REST_API_URL;
 const REDIS_TOKEN = process.env.KV_REST_API_TOKEN;
 
-async function redisCommand(command, ...args) {
-  const response = await fetch(`${REDIS_URL}/${command}/${args.join("/")}`, {
+async function redisSet(key, value) {
+  const response = await fetch(`${REDIS_URL}/set/${key}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${REDIS_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify([key, JSON.stringify(value)]),
+  });
+  return response.json();
+}
+
+async function redisGet(key) {
+  const response = await fetch(`${REDIS_URL}/get/${key}`, {
     headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
   });
   return response.json();
@@ -10,25 +22,22 @@ async function redisCommand(command, ...args) {
 
 export default async function handler(req, res) {
   const { method } = req;
-  const { action, clave, datos } = req.body || req.query;
-
-  if (!clave) return res.status(400).json({ error: "Falta clave de vendedor" });
-
-  const key = `vendor:${clave}`;
 
   try {
-    // LEER memoria del vendedor
-    if (method === "GET" || action === "get") {
-      const result = await redisCommand("get", key);
+    if (method === "GET") {
+      const { clave } = req.query;
+      if (!clave) return res.status(400).json({ error: "Falta clave" });
+      const result = await redisGet(`vendor:${clave}`);
       const memoria = result.result ? JSON.parse(result.result) : null;
       return res.status(200).json({ memoria });
     }
 
-    // GUARDAR memoria del vendedor
-    if (method === "POST" || action === "set") {
-      const memoriaActual = await redisCommand("get", key);
-      const memoriaPrevia = memoriaActual.result
-        ? JSON.parse(memoriaActual.result)
+    if (method === "POST") {
+      const { clave, datos } = req.body;
+      if (!clave) return res.status(400).json({ error: "Falta clave" });
+      const prevResult = await redisGet(`vendor:${clave}`);
+      const memoriaPrevia = prevResult.result
+        ? JSON.parse(prevResult.result)
         : { sesiones: 0, pendientes: [], historial: [] };
 
       const nuevaMemoria = {
@@ -38,7 +47,7 @@ export default async function handler(req, res) {
         resumenUltimaSesion: datos?.resumen || "",
         pendientes: datos?.pendientes || memoriaPrevia.pendientes || [],
         historial: [
-          ...(memoriaPrevia.historial || []).slice(-4), // últimas 4 sesiones
+          ...(memoriaPrevia.historial || []).slice(-4),
           {
             fecha: new Date().toISOString(),
             resumen: datos?.resumen || "",
@@ -47,7 +56,7 @@ export default async function handler(req, res) {
         ],
       };
 
-      await redisCommand("set", key, encodeURIComponent(JSON.stringify(nuevaMemoria)));
+      await redisSet(`vendor:${clave}`, nuevaMemoria);
       return res.status(200).json({ ok: true, memoria: nuevaMemoria });
     }
 
