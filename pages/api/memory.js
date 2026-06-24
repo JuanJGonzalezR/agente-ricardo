@@ -14,10 +14,15 @@ async function redisSet(key, value) {
 }
 
 async function redisGet(key) {
-  const response = await fetch(`${REDIS_URL}/get/${key}`, {
+  const response = await fetch(`${REDIS_URL}/get/${encodeURIComponent(key)}`, {
     headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
   });
-  return response.json();
+  const data = await response.json();
+  // Upstash puede devolver {result: "..."} o ["key", "..."]
+  if (Array.isArray(data)) {
+    return { result: data[1] };
+  }
+  return data;
 }
 
 export default async function handler(req, res) {
