@@ -27,6 +27,7 @@ export default function Home() {
   const [mensajes, setMensajes] = useState([]);
   const [inputTexto, setInputTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [memoria, setMemoria] = useState(null);
   const chatRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -71,7 +72,7 @@ export default function Home() {
       const data = await res.json();
       if (data.ok) {
         setIntentos(0);
-        await iniciarChat(vendedorSeleccionado, data.esDirector);
+        await cargarMemoriaEIniciarChat(vendedorSeleccionado, data.esDirector);
       } else {
         setIntentos((i) => i + 1);
         setError(intentos >= 2 ? "Acceso bloqueado temporalmente." : "PIN incorrecto.");
@@ -84,11 +85,35 @@ export default function Home() {
     setCargando(false);
   };
 
-  const iniciarChat = async (vendedor, esDirector) => {
+  const cargarMemoriaEIniciarChat = async (vendedor, esDirector) => {
+    let memoriaVendedor = null;
+
+    try {
+      const res = await fetch(`/api/memory?action=get&clave=${vendedor.clave}`);
+      const data = await res.json();
+      memoriaVendedor = data.memoria;
+      setMemoria(memoriaVendedor);
+    } catch {
+      console.log("Sin memoria previa");
+    }
+
     const nombre = vendedor.nombre.split(" ")[0];
-    const mensajeInicial = esDirector
-      ? `Buenos días Ricardo. ¿Qué quieres revisar hoy — el estado general del equipo, un vendedor específico, o las alertas del día?`
-      : `Hola ${nombre}. Soy tu agente de ventas. ¿Qué hiciste hoy o qué tienes agendado? Cuéntame y yo te ayudo a registrarlo.`;
+    let mensajeInicial = "";
+
+    if (esDirector) {
+      mensajeInicial = memoriaVendedor
+        ? `Bienvenido Ricardo. Última sesión: ${new Date(memoriaVendedor.ultimaSesion).toLocaleDateString("es-MX")}. ¿Qué revisamos hoy?`
+        : `Buenos días Ricardo. ¿Qué quieres revisar hoy — el estado general del equipo, un vendedor específico, o las alertas del día?`;
+    } else {
+      if (memoriaVendedor && memoriaVendedor.sesiones > 0) {
+        const pendientes = memoriaVendedor.pendientes?.length > 0
+          ? `Tienes ${memoriaVendedor.pendientes.length} pendiente(s) de tu última sesión: ${memoriaVendedor.pendientes.join(", ")}.`
+          : "No tienes pendientes de tu última sesión.";
+        mensajeInicial = `Hola ${nombre}, bienvenido de vuelta. ${pendientes}\n\n¿Qué hiciste hoy?`;
+      } else {
+        mensajeInicial = `Hola ${nombre}. Soy tu agente de ventas. ¿Qué hiciste hoy o qué tienes agendado? Cuéntame y yo te ayudo a registrarlo.`;
+      }
+    }
 
     setMensajes([{ role: "assistant", content: mensajeInicial }]);
     setPantalla("agente");
@@ -111,6 +136,7 @@ export default function Home() {
           mensajes: historialActualizado,
           vendedor: vendedorSeleccionado.nombre,
           esDirector: vendedorSeleccionado.director || false,
+          memoria,
         }),
       });
       const data = await res.json();
@@ -127,7 +153,31 @@ export default function Home() {
     inputRef.current?.focus();
   };
 
-  const cerrarSesion = () => {
+  const cerrarSesion = async () => {
+    // Guardar resumen de sesión en Redis antes de salir
+    if (vendedorSeleccionado && mensajes.length > 1) {
+      try {
+        const ultimosMensajes = mensajes.slice(-4)
+          .map((m) => `${m.role === "user" ? "Vendedor" : "Agente"}: ${m.content}`)
+          .join(" | ");
+
+        await fetch("/api/memory", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "set",
+            clave: vendedorSeleccionado.clave,
+            datos: {
+              resumen: ultimosMensajes.slice(0, 300),
+              pendientes: [],
+            },
+          }),
+        });
+      } catch {
+        console.log("Error guardando memoria");
+      }
+    }
+
     setPantalla("inicio");
     setVendedorSeleccionado(null);
     setPin("");
@@ -135,6 +185,7 @@ export default function Home() {
     setIntentos(0);
     setMensajes([]);
     setInputTexto("");
+    setMemoria(null);
   };
 
   const manejarTecla = (e) => {
@@ -222,6 +273,11 @@ export default function Home() {
             </span>
             <button style={s.btnCerrar} onClick={cerrarSesion}>Salir</button>
           </div>
+          {memoria && (
+            <p style={s.sesionInfo}>
+              Sesión #{memoria.sesiones + 1} · Última vez: {new Date(memoria.ultimaSesion).toLocaleDateString("es-MX")}
+            </p>
+          )}
         </div>
 
         <div style={s.chatArea} ref={chatRef}>
@@ -258,19 +314,8 @@ export default function Home() {
   }
 }
 
-// ── ESTILOS ───────────────────────────────────────────────────
 const s = {
-  contenedor: {
-    minHeight: "100vh",
-    backgroundColor: "#0D0D0D",
-    color: "#FFFFFF",
-    fontFamily: "'Inter', -apple-system, sans-serif",
-    display: "flex",
-    flexDirection: "column",
-    maxWidth: "430px",
-    margin: "0 auto",
-    paddingBottom: "0",
-  },
+  contenedor: { minHeight: "100vh", backgroundColor: "#0D0D0D", color: "#FFFFFF", fontFamily: "'Inter', -apple-system, sans-serif", display: "flex", flexDirection: "column", maxWidth: "430px", margin: "0 auto" },
   header: { padding: "40px 24px 16px", borderBottom: "1px solid #1A1A1A" },
   logo: { fontSize: "11px", letterSpacing: "4px", color: "#00C896", fontWeight: "700" },
   logoSub: { fontSize: "28px", fontWeight: "700", color: "#FFFFFF", marginTop: "4px" },
@@ -296,9 +341,10 @@ const s = {
   teclado: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px", padding: "0 32px", marginTop: "8px" },
   tecla: { backgroundColor: "#1A1A1A", border: "none", borderRadius: "14px", color: "#FFF", fontSize: "22px", fontWeight: "400", padding: "20px", cursor: "pointer" },
   teclaBorrar: { backgroundColor: "#1A1A1A", border: "none", borderRadius: "14px", color: "#888", fontSize: "20px", padding: "20px", cursor: "pointer" },
-  agenteHeader: { borderBottom: "1px solid #1A1A1A", padding: "20px 20px 16px", flexShrink: 0 },
+  agenteHeader: { borderBottom: "1px solid #1A1A1A", padding: "20px 20px 12px", flexShrink: 0 },
   agenteInfo: { display: "flex", justifyContent: "space-between", alignItems: "center" },
   agenteNombre: { fontSize: "16px", fontWeight: "600", color: "#FFF" },
+  sesionInfo: { fontSize: "11px", color: "#444", margin: "6px 0 0", letterSpacing: "0.3px" },
   btnCerrar: { background: "none", border: "1px solid #2A2A2A", borderRadius: "8px", color: "#666", fontSize: "12px", padding: "6px 12px", cursor: "pointer" },
   chatArea: { flex: 1, padding: "16px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "12px", minHeight: 0, height: "calc(100vh - 140px)", maxHeight: "calc(100vh - 140px)" },
   bubbleAgent: { backgroundColor: "#141414", borderRadius: "16px 16px 16px 4px", padding: "12px 16px", maxWidth: "85%", alignSelf: "flex-start" },
