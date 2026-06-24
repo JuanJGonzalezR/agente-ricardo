@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     }
 
     if (method === "POST") {
-      const { clave, datos } = req.body;
+      const { clave, datos, conversacion } = req.body;
       if (!clave) return res.status(400).json({ error: "Falta clave" });
 
       const previa = await redis.get(`vendor:${clave}`);
@@ -28,18 +28,53 @@ export default async function handler(req, res) {
         ? previa
         : { sesiones: 0, pendientes: [], historial: [] };
 
+      // Extraer pendientes concretos con Claude
+      let pendientesExtraidos = datos?.pendientes || [];
+      if (conversacion && conversacion.length > 0) {
+        try {
+          const resumenConv = conversacion
+            .map((m) => `${m.role === "user" ? "Vendedor" : "Agente"}: ${m.content}`)
+            .join("\n");
+
+          const respIA = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-api-key": process.env.ANTHROPIC_API_KEY,
+              "anthropic-version": "2023-06-01",
+            },
+            body: JSON.stringify({
+              model: "claude-sonnet-4-6",
+              max_tokens: 300,
+              system: "Extrae los pendientes y compromisos concretos de esta conversación de ventas. Devuelve SOLO un array JSON de strings cortos, sin explicación. Ejemplo: [\"Demo Toyota viernes\", \"Llamar a gerente Honda lunes\"]. Si no hay pendientes claros, devuelve [].",
+              messages: [{ role: "user", content: resumenConv }],
+            }),
+          });
+          const dataIA = await respIA.json();
+          if (dataIA.content && dataIA.content[0]) {
+            const texto = dataIA.content[0].text.trim();
+            const match = texto.match(/\[.*\]/s);
+            if (match) {
+              pendientesExtraidos = JSON.parse(match[0]);
+            }
+          }
+        } catch (e) {
+          console.error("Error extrayendo pendientes:", e);
+        }
+      }
+
       const nuevaMemoria = {
         clave,
         sesiones: (memoriaPrevia.sesiones || 0) + 1,
         ultimaSesion: new Date().toISOString(),
         resumenUltimaSesion: datos?.resumen || "",
-        pendientes: datos?.pendientes || memoriaPrevia.pendientes || [],
+        pendientes: pendientesExtraidos,
         historial: [
           ...(memoriaPrevia.historial || []).slice(-4),
           {
             fecha: new Date().toISOString(),
             resumen: datos?.resumen || "",
-            pendientes: datos?.pendientes || [],
+            pendientes: pendientesExtraidos,
           },
         ],
       };
