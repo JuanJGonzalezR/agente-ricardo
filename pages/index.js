@@ -31,6 +31,8 @@ export default function Home() {
   const [enviando, setEnviando] = useState(false);
   const [memoria, setMemoria] = useState(null);
   const [busqueda, setBusqueda] = useState("");
+  const [grabando, setGrabando] = useState(false);
+  const reconocimientoRef = useRef(null);
   const chatRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -145,6 +147,38 @@ export default function Home() {
     setVendedorSeleccionado(null);
     setPin(""); setError(""); setIntentos(0);
     setMensajes([]); setInputTexto(""); setMemoria(null); setBusqueda("");
+  };
+
+  const toggleVoz = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Tu navegador no soporta dictado por voz. Usa Safari o Chrome.");
+      return;
+    }
+    if (grabando) {
+      reconocimientoRef.current?.stop();
+      setGrabando(false);
+      return;
+    }
+    const rec = new SpeechRecognition();
+    rec.lang = "es-MX";
+    rec.continuous = true;
+    rec.interimResults = true;
+    let textoFinal = "";
+    rec.onresult = (e) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) textoFinal += t;
+        else interim += t;
+      }
+      setInputTexto((textoFinal + interim).trim());
+    };
+    rec.onerror = () => setGrabando(false);
+    rec.onend = () => setGrabando(false);
+    rec.start();
+    reconocimientoRef.current = rec;
+    setGrabando(true);
   };
 
   const manejarTecla = (e) => {
@@ -290,6 +324,14 @@ export default function Home() {
         </div>
 
         <div style={s.inputArea}>
+          <button
+            style={grabando ? { ...s.btnMic, ...s.btnMicActivo } : s.btnMic}
+            onClick={toggleVoz}
+            disabled={enviando}
+            aria-label="Dictar por voz"
+          >
+            {grabando ? "■" : "🎤"}
+          </button>
           <input
             ref={inputRef}
             style={s.inputChat}
@@ -391,4 +433,6 @@ const s = {
   inputArea: { display: "flex", gap: "8px", padding: "11px 14px 16px", flexShrink: 0 },
   inputChat: { flex: 1, backgroundColor: "#141A22", border: "1px solid #232C37", borderRadius: "13px", color: "#EAF0F3", fontSize: "15px", padding: "12px 14px", outline: "none" },
   btnEnviar: { backgroundColor: ACCENT, border: "none", borderRadius: "13px", color: "#06201C", fontSize: "20px", fontWeight: "700", width: "46px", cursor: "pointer", flexShrink: 0 },
+  btnMic: { backgroundColor: "#141A22", border: "1px solid #232C37", borderRadius: "13px", color: "#9FB0BE", fontSize: "18px", width: "46px", cursor: "pointer", flexShrink: 0 },
+  btnMicActivo: { backgroundColor: "#E5484D", borderColor: "#E5484D", color: "#FFFFFF" },
 };
