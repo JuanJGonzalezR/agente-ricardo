@@ -164,15 +164,12 @@ export default function Home() {
     rec.lang = "es-MX";
     rec.continuous = true;
     rec.interimResults = true;
-    let textoFinal = "";
     rec.onresult = (e) => {
-      let interim = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const t = e.results[i][0].transcript;
-        if (e.results[i].isFinal) textoFinal += t;
-        else interim += t;
+      let completo = "";
+      for (let i = 0; i < e.results.length; i++) {
+        completo += e.results[i][0].transcript + " ";
       }
-      setInputTexto((textoFinal + interim).trim());
+      setInputTexto(completo.trim());
     };
     rec.onerror = () => setGrabando(false);
     rec.onend = () => setGrabando(false);
