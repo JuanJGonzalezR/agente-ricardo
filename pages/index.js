@@ -106,10 +106,7 @@ export default function Home() {
         : `Buenos días Ricardo. ¿Qué quieres revisar hoy — el estado general del equipo, un vendedor específico, o las alertas del día?`;
     } else {
       if (memoriaVendedor && memoriaVendedor.sesiones > 0) {
-        const pendientes = memoriaVendedor.pendientes?.length > 0
-          ? `Tienes ${memoriaVendedor.pendientes.length} pendiente(s) de tu última sesión: ${memoriaVendedor.pendientes.join(", ")}.`
-          : "No tienes pendientes de tu última sesión.";
-        mensajeInicial = `Hola ${nombre}, bienvenido de vuelta. ${pendientes}\n\n¿Qué hiciste hoy?`;
+        mensajeInicial = `Hola ${nombre}, bienvenido de vuelta. Déjame recordar dónde nos quedamos...`;
       } else {
         mensajeInicial = `Hola ${nombre}. Soy tu agente de ventas. ¿Qué hiciste hoy o qué tienes agendado? Cuéntame y yo te ayudo a registrarlo.`;
       }
