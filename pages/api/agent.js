@@ -56,9 +56,12 @@ REGLAS IMPORTANTES:
 - Usa lenguaje comercial, directo y motivador
 - Cuando el vendedor reporte una actividad, confirma qué registrarás en Odoo antes de guardarlo
 
-FORMATO DE RESPUESTA:
-Responde en español, de forma conversacional. Si el vendedor reporta una actividad, termina tu respuesta con:
-📋 Registro: [tipo] en [oportunidad] — [resumen de 1 línea]`;
+FORMATO DE RESPUESTA — MUY IMPORTANTE:
+- Escribe en texto plano, sin asteriscos, sin guiones para listas, sin Markdown de ningún tipo
+- Usa números simples si necesitas listar: "1. algo 2. algo 3. algo"
+- Usa saltos de línea para separar ideas
+- Al final de cada respuesta donde registres algo, agrega una línea así:
+  📋 Registro: [TIPO] en [nombre oportunidad] — [resumen breve]`;
 
   const systemPromptDirector = `Eres el Agente Ricardo en modo supervisor, asistente ejecutivo del Director Comercial Ricardo Gárate de Nanoschutz / Astralab.
 
@@ -70,19 +73,19 @@ PIPELINE: Prospectos → Entrevista Tomador → Demo de Productos → Propuesta 
 
 4 BLOQUES QUE MIDE EL DASHBOARD:
 1. Actividad Comercial (25%) — genera oportunidades reales
-2. Conversión (30%) — convierte visitas y demos en agencias activas  
+2. Conversión (30%) — convierte visitas y demos en agencias activas
 3. Ventas/Resultados (30%) — facturación vs presupuesto
 4. Disciplina Operativa (15%) — usa CRM, da seguimiento, no deja tirado el proceso
 
 SEMÁFORO: Verde 90%+ | Amarillo 70-89% | Rojo 0-69%
 
 ALERTAS QUE DEBES DETECTAR:
-- Actividad alta pero conversión baja → "actividad sin calidad"
-- Visitas sin tomador de decisión → "visita sin decisor"
-- Propuestas sin siguiente paso → "propuesta varada"
-- Seguimiento vencido → "seguimiento caído"
-- Sin prospectos nuevos en 7 días → "prospección detenida"
-- Score < 90% → alerta crítica
+- Actividad alta pero conversión baja → actividad sin calidad
+- Visitas sin tomador de decisión → visita sin decisor
+- Propuestas sin siguiente paso → propuesta varada
+- Seguimiento vencido → seguimiento caído
+- Sin prospectos nuevos en 7 días → prospección detenida
+- Score menor a 90% → alerta crítica
 
 TU ROL:
 - Dar resumen ejecutivo del equipo
@@ -96,7 +99,12 @@ REGLAS:
 - Siempre menciona el score y semáforo cuando hablas de un vendedor
 - Siempre termina con una acción concreta para hoy
 - No felicites actividad vacía
-- Siempre vuelve al dolor operativo: relavados, quejas, CSI, tiempos de entrega`;
+- Siempre vuelve al dolor operativo: relavados, quejas, CSI, tiempos de entrega
+
+FORMATO DE RESPUESTA — MUY IMPORTANTE:
+- Escribe en texto plano, sin asteriscos, sin guiones, sin Markdown de ningún tipo
+- Usa saltos de línea para separar ideas
+- Si listas vendedores usa números simples: "1. Nombre — score — acción"`;
 
   const systemPrompt = esDirector ? systemPromptDirector : systemPromptVendedor;
 
@@ -123,7 +131,12 @@ REGLAS:
       return res.status(500).json({ error: "Error al conectar con el agente" });
     }
 
-    const texto = data.content[0].text;
+    // Limpiar cualquier Markdown residual
+    let texto = data.content[0].text;
+    texto = texto.replace(/\*\*(.*?)\*\*/g, "$1");
+    texto = texto.replace(/\*(.*?)\*/g, "$1");
+    texto = texto.replace(/#{1,6}\s/g, "");
+
     return res.status(200).json({ respuesta: texto });
   } catch (error) {
     console.error("Error:", error);
