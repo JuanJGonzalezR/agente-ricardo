@@ -2,13 +2,11 @@ const REDIS_URL = process.env.KV_REST_API_URL;
 const REDIS_TOKEN = process.env.KV_REST_API_TOKEN;
 
 async function redisSet(key, value) {
-  const response = await fetch(`${REDIS_URL}/set/${key}`, {
-    method: "POST",
+  const response = await fetch(`${REDIS_URL}/set/${encodeURIComponent(key)}/${encodeURIComponent(JSON.stringify(value))}`, {
+    method: "GET",
     headers: {
       Authorization: `Bearer ${REDIS_TOKEN}`,
-      "Content-Type": "application/json",
     },
-    body: JSON.stringify([key, JSON.stringify(value)]),
   });
   return response.json();
 }
