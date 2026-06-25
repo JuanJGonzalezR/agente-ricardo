@@ -168,21 +168,36 @@ export default function Home() {
     rec.lang = "es-MX";
     rec.continuous = true;
     rec.interimResults = true;
+
     let timeoutSilencio = null;
+    let textoConfirmado = "";
+
     rec.onresult = (e) => {
-      let completo = "";
-      for (let i = 0; i < e.results.length; i++) {
-        completo += e.results[i][0].transcript + " ";
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const transcript = e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          textoConfirmado += transcript + " ";
+        } else {
+          interim += transcript;
+        }
       }
-      setInputTexto(completo.trim());
+      setInputTexto((textoConfirmado + interim).trim());
       if (timeoutSilencio) clearTimeout(timeoutSilencio);
       timeoutSilencio = setTimeout(() => {
         rec.stop();
-        setGrabando(false);
       }, 2000);
     };
-    rec.onerror = () => setGrabando(false);
-    rec.onend = () => setGrabando(false);
+
+    rec.onerror = () => {
+      if (timeoutSilencio) clearTimeout(timeoutSilencio);
+      setGrabando(false);
+    };
+    rec.onend = () => {
+      if (timeoutSilencio) clearTimeout(timeoutSilencio);
+      setGrabando(false);
+    };
+
     rec.start();
     reconocimientoRef.current = rec;
     setGrabando(true);
