@@ -124,7 +124,10 @@ export default function Home() {
         }),
       });
       const data = await res.json();
-      if (data.respuesta) setMensajes((p) => [...p, { role: "assistant", content: data.respuesta }]);
+      if (data.respuesta) {
+        const { textoLimpio, registro } = extraerRegistro(data.respuesta);
+        setMensajes((p) => [...p, { role: "assistant", content: textoLimpio || "Listo.", registro, confirmado: false }]);
+      }
     } catch {
       setMensajes((p) => [...p, { role: "assistant", content: "Error de conexión. Intenta de nuevo." }]);
     }
@@ -196,6 +199,11 @@ export default function Home() {
     reconocimientoRef.current = rec;
     setGrabando(true);
   };
+
+  const confirmarRegistro = (idx) => {
+    setMensajes((prev) => prev.map((m, i) => (i === idx ? { ...m, confirmado: true } : m)));
+  };
+  const editarRegistro = () => { inputRef.current?.focus(); };
 
   const manejarTecla = (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviarMensaje(); }
@@ -314,12 +322,36 @@ export default function Home() {
 
         <div style={s.chatArea} ref={chatRef}>
           {mensajes.map((m, i) => (
-            <div key={i} style={m.role === "user" ? s.bubbleUser : s.bubbleAgent}>
-              <p style={s.bubbleTexto}>
-                {m.content.split("\n").map((linea, idx, arr) => (
-                  <span key={idx}>{linea}{idx < arr.length - 1 && <br />}</span>
-                ))}
-              </p>
+            <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: m.role === "user" ? "flex-end" : "flex-start", gap: "7px" }}>
+              <div style={m.role === "user" ? s.bubbleUser : s.bubbleAgent}>
+                <p style={s.bubbleTexto}>
+                  {m.content.split("\n").map((linea, idx, arr) => (
+                    <span key={idx}>{linea}{idx < arr.length - 1 && <br />}</span>
+                  ))}
+                </p>
+              </div>
+              {m.registro && !m.confirmado && (
+                <div style={s.registroCard}>
+                  <div style={s.registroTipo}>{m.registro.tipo || "REGISTRO"}</div>
+                  <div style={s.registroCampos}>
+                    {Object.entries(m.registro)
+                      .filter(([k, v]) => k !== "tipo" && typeof v === "string" && v.trim() !== "")
+                      .map(([k, v]) => (
+                        <div key={k} style={s.registroFila}>
+                          <span style={s.registroLabel}>{({ oportunidad: "Oportunidad", detalle: "Detalle", proximoPaso: "Próximo paso", contacto: "Contacto", etapa: "Etapa" })[k] || k}</span>
+                          <span style={s.registroValor}>{v}</span>
+                        </div>
+                      ))}
+                  </div>
+                  <div style={s.registroBotones}>
+                    <button style={s.registroConfirmar} onClick={() => confirmarRegistro(i)}>✓ Confirmar</button>
+                    <button style={s.registroEditar} onClick={editarRegistro}>Editar</button>
+                  </div>
+                </div>
+              )}
+              {m.registro && m.confirmado && (
+                <div style={s.registroConfirmado}>✓ Registrado · {m.registro.tipo} {m.registro.oportunidad || ""}</div>
+              )}
             </div>
           ))}
           {enviando && (
@@ -369,6 +401,15 @@ export default function Home() {
       </Marco>
     );
   }
+}
+
+function extraerRegistro(texto) {
+  const match = texto.match(/<<<REGISTRO\s*([\s\S]*?)\s*REGISTRO>>>/);
+  if (!match) return { textoLimpio: texto, registro: null };
+  let registro = null;
+  try { registro = JSON.parse(match[1].trim()); } catch (e) { registro = null; }
+  const textoLimpio = texto.replace(match[0], "").trim();
+  return { textoLimpio, registro };
 }
 
 // ── MARCO (app shell centrado) ───────────────────────────────
@@ -448,6 +489,16 @@ const s = {
 
   inputArea: { display: "flex", gap: "8px", padding: "11px 14px 16px", flexShrink: 0 },
   inputChat: { flex: 1, backgroundColor: "#141A22", border: "1px solid #232C37", borderRadius: "13px", color: "#EAF0F3", fontSize: "15px", padding: "12px 14px", outline: "none" },
+  registroCard: { backgroundColor: "#0E1A18", border: "1px solid #14564C", borderRadius: "14px", padding: "13px 14px", maxWidth: "88%" },
+  registroTipo: { fontFamily: "ui-monospace, monospace", fontSize: "11px", letterSpacing: "2px", color: ACCENT, marginBottom: "10px" },
+  registroCampos: { display: "flex", flexDirection: "column", gap: "6px", marginBottom: "13px" },
+  registroFila: { display: "flex", gap: "10px" },
+  registroLabel: { fontSize: "12px", color: "#6E7A88", minWidth: "92px", flexShrink: 0 },
+  registroValor: { fontSize: "13px", color: "#DCE3E8", fontWeight: "500" },
+  registroBotones: { display: "flex", gap: "8px" },
+  registroConfirmar: { flex: 1, backgroundColor: ACCENT, border: "none", borderRadius: "10px", color: "#06201C", fontSize: "13px", fontWeight: "600", padding: "9px", cursor: "pointer" },
+  registroEditar: { backgroundColor: "transparent", border: "1px solid #232C37", borderRadius: "10px", color: "#9FB0BE", fontSize: "13px", padding: "9px 16px", cursor: "pointer" },
+  registroConfirmado: { backgroundColor: "#0F2A1C", border: "1px solid #1A4F38", borderRadius: "10px", padding: "8px 12px", fontSize: "12.5px", color: "#1FBF75", fontWeight: "500" },
   btnEnviar: { backgroundColor: ACCENT, border: "none", borderRadius: "13px", color: "#06201C", fontSize: "20px", fontWeight: "700", width: "46px", cursor: "pointer", flexShrink: 0 },
   btnMic: { backgroundColor: "#141A22", border: "1px solid #232C37", borderRadius: "13px", color: "#9FB0BE", fontSize: "18px", width: "46px", cursor: "pointer", flexShrink: 0 },
   btnMicActivo: { backgroundColor: "#E5484D", borderColor: "#E5484D", color: "#FFFFFF" },
