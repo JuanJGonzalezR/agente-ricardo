@@ -384,8 +384,8 @@ function Marco({ children, noPad }) {
 
 const ACCENT = "#00D9C0";
 const s = {
-  fondo: { minHeight: "100vh", backgroundColor: "#05070A", display: "flex", alignItems: "center", justifyContent: "center", padding: "0", fontFamily: "'Inter', -apple-system, sans-serif" },
-  dispositivo: { width: "100%", maxWidth: "430px", height: "100vh", maxHeight: "920px", backgroundColor: "#0A0D12", border: "1px solid #1A222C", borderRadius: "0", overflow: "hidden", display: "flex", flexDirection: "column" },
+  fondo: { minHeight: "100dvh", height: "100dvh", backgroundColor: "#05070A", display: "flex", alignItems: "center", justifyContent: "center", padding: "0", fontFamily: "'Inter', -apple-system, sans-serif" },
+  dispositivo: { width: "100%", maxWidth: "430px", height: "100dvh", maxHeight: "100dvh", backgroundColor: "#0A0D12", border: "1px solid #1A222C", borderRadius: "0", overflow: "hidden", display: "flex", flexDirection: "column" },
   pantalla: { flex: 1, display: "flex", flexDirection: "column", overflowY: "auto", color: "#EAF0F3" },
   pantallaChat: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", color: "#EAF0F3" },
 
