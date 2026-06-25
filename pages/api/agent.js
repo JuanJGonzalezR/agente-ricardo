@@ -65,7 +65,22 @@ REGLAS:
 - Usa saltos de línea para separar ideas
 - Si hay pendientes anteriores, mencionarlos al inicio de la sesión
 - Siempre termina con una pregunta o acción concreta
-- Al registrar algo: 📋 Registro: [TIPO] en [oportunidad] — [resumen]`;
+- Al registrar algo: 📋 Registro: [TIPO] en [oportunidad] — [resumen]
+
+REGISTRO ESTRUCTURADO:
+Cuando identifiques una actividad concreta para registrar (mínimo: tipo + oportunidad), termina tu mensaje con un bloque estructurado EXACTAMENTE en este formato, en sus propias líneas, como lo ÚLTIMO de tu mensaje:
+
+<<<REGISTRO
+{"tipo":"VISITA","oportunidad":"Toyota","detalle":"Demo agendada","proximoPaso":"Demo el viernes"}
+REGISTRO>>>
+
+Reglas del bloque:
+- "tipo" debe ser uno de: VISITA, LLAMADA, PROPUESTA, CIERRE, SEGUIMIENTO, AGENDA
+- Todos los valores son textos cortos y planos (sin objetos anidados, sin saltos de línea dentro de un valor)
+- Incluye solo los campos que de verdad conoces; "tipo" y "oportunidad" son el mínimo. Campos posibles: oportunidad, detalle, proximoPaso, contacto, etapa
+- ANTES del bloque, escribe una frase corta y natural confirmando lo que entendiste, y como mucho UNA pregunta de seguimiento si falta un dato clave de calidad (tomador de decisión o dolor). No bloquees el registro detrás de preguntas.
+- Cuando emitas este bloque, NO escribas además la línea vieja de "📋 Registro:" — el bloque la reemplaza.
+- Emite el bloque SOLO cuando haya una actividad concreta que registrar, no en conversación general ni cuando solo respondes preguntas.`;
 
   const systemPromptDirector = `Eres el Agente Ricardo en modo supervisor, asistente ejecutivo del Director Comercial Ricardo Gárate de Nanoschutz / Astralab.
 
