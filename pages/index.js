@@ -166,23 +166,17 @@ export default function Home() {
     }
     const rec = new SpeechRecognition();
     rec.lang = "es-MX";
-    rec.continuous = true;
+    rec.continuous = false;
     rec.interimResults = true;
 
     let timeoutSilencio = null;
-    let textoConfirmado = "";
 
     rec.onresult = (e) => {
-      let interim = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const transcript = e.results[i][0].transcript;
-        if (e.results[i].isFinal) {
-          textoConfirmado += transcript + " ";
-        } else {
-          interim += transcript;
-        }
-      }
-      setInputTexto((textoConfirmado + interim).trim());
+      // Tomar solo el último resultado reconocido (evita re-acumulación de Android)
+      const ultimoResultado = e.results[e.results.length - 1];
+      const texto = ultimoResultado[0].transcript.trim();
+      setInputTexto(texto);
+
       if (timeoutSilencio) clearTimeout(timeoutSilencio);
       timeoutSilencio = setTimeout(() => {
         rec.stop();
