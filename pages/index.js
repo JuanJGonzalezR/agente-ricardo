@@ -103,6 +103,10 @@ export default function Home() {
   const enviarMensaje = async (textoForzado) => {
     const texto = (textoForzado || inputTexto).trim();
     if (!texto || enviando) return;
+    if (grabando && reconocimientoRef.current) {
+      reconocimientoRef.current.stop();
+      setGrabando(false);
+    }
     const nuevo = { role: "user", content: texto };
     const hist = [...mensajes, nuevo];
     setMensajes(hist);
@@ -164,12 +168,18 @@ export default function Home() {
     rec.lang = "es-MX";
     rec.continuous = true;
     rec.interimResults = true;
+    let timeoutSilencio = null;
     rec.onresult = (e) => {
       let completo = "";
       for (let i = 0; i < e.results.length; i++) {
         completo += e.results[i][0].transcript + " ";
       }
       setInputTexto(completo.trim());
+      if (timeoutSilencio) clearTimeout(timeoutSilencio);
+      timeoutSilencio = setTimeout(() => {
+        rec.stop();
+        setGrabando(false);
+      }, 2000);
     };
     rec.onerror = () => setGrabando(false);
     rec.onend = () => setGrabando(false);
