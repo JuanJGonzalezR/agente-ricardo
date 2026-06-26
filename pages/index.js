@@ -367,7 +367,14 @@ export default function Home() {
 
         <div style={s.chipsRow}>
           {chips.map((c) => (
-            <button key={c} style={s.chip} onClick={() => enviarMensaje(c)} disabled={enviando}>{c}</button>
+            <button
+              key={c}
+              style={enviando ? { ...s.chip, opacity: 0.5, cursor: "not-allowed" } : s.chip}
+              onClick={() => { if (!enviando) enviarMensaje(c); }}
+              disabled={enviando}
+            >
+              {c}
+            </button>
           ))}
         </div>
 
