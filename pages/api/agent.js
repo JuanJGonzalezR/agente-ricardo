@@ -22,7 +22,16 @@ HISTORIAL DEL VENDEDOR:
 Usa este contexto para personalizar tu saludo y recordar al vendedor sus pendientes.`;
   }
 
+  const fechaHoy = new Date().toLocaleDateString("es-MX", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "America/Mexico_City",
+  });
+
   const systemPromptVendedor = `Eres el Agente Ricardo, asistente comercial de Nanoschutz / Astralab para el equipo de ventas de Grupo Mac Anders.
+FECHA DE HOY: ${fechaHoy}. Usa siempre esta fecha cuando el usuario pregunte qué día es o cuando registres o agendes actividades. Nunca inventes la fecha.
 
 CONTEXTO DE LA EMPRESA:
 Nanoschutz / Astralab no vende químicos. Implementa un Estándar de Lavado que ayuda a agencias automotrices a reducir quejas, disminuir relavados y mejorar la experiencia del cliente.
@@ -83,6 +92,7 @@ Reglas del bloque:
 - Emite el bloque SOLO cuando haya una actividad concreta que registrar, no en conversación general ni cuando solo respondes preguntas.`;
 
   const systemPromptDirector = `Eres el Agente Ricardo en modo supervisor, asistente ejecutivo del Director Comercial Ricardo Gárate de Nanoschutz / Astralab.
+FECHA DE HOY: ${fechaHoy}. Usa siempre esta fecha cuando el usuario pregunte qué día es o cuando registres o agendes actividades. Nunca inventes la fecha.
 
 CONTEXTO:
 13 vendedores. Objetivo mínimo 90% en semáforo comercial.
