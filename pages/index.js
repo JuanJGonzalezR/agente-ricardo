@@ -100,14 +100,14 @@ export default function Home() {
     setPantalla("agente");
   };
 
-  const enviarMensaje = async (textoForzado) => {
-    const texto = (textoForzado || inputTexto).trim();
-    if (!texto || enviando) return;
+  const enviarMensaje = async (texto) => {
+    const contenido = (texto || "").trim();
+    if (!contenido || enviando) return;
     if (grabando && reconocimientoRef.current) {
       reconocimientoRef.current.stop();
       setGrabando(false);
     }
-    const nuevo = { role: "user", content: texto };
+    const nuevo = { role: "user", content: contenido };
     const hist = [...mensajes, nuevo];
     setMensajes(hist);
     setInputTexto("");
@@ -206,7 +206,7 @@ export default function Home() {
   const editarRegistro = () => { inputRef.current?.focus(); };
 
   const manejarTecla = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviarMensaje(); }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviarMensaje(inputTexto); }
   };
 
   const vendedoresFiltrados = VENDEDORES.filter(
@@ -396,7 +396,7 @@ export default function Home() {
             onKeyDown={manejarTecla}
             disabled={enviando}
           />
-          <button style={enviando ? { ...s.btnEnviar, opacity: 0.5 } : s.btnEnviar} onClick={() => enviarMensaje()} disabled={enviando}>↑</button>
+          <button style={enviando ? { ...s.btnEnviar, opacity: 0.5 } : s.btnEnviar} onClick={() => enviarMensaje(inputTexto)} disabled={enviando}>↑</button>
         </div>
 
         <style>{`
