@@ -1,6 +1,6 @@
 // pages/api/odoo/summary.js
 import { Redis } from '@upstash/redis';
-import { odooExecute, getOdooLogin } from '../../../lib/odoo';
+import { searchRead, getOdooLogin } from '../../../lib/odoo';
 
 const redis = new Redis({
   url: process.env.KV_REST_API_URL,
@@ -31,9 +31,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    const users = await odooExecute(
-      'res.users', 'search_read',
-      [ [['login', '=', odooLogin]] ],
+    const users = await searchRead(
+      'res.users',
+      [['login', '=', odooLogin]],
       { fields: ['id', 'name'], limit: 1 }
     );
     if (!users || !users.length) {
@@ -42,13 +42,13 @@ export default async function handler(req, res) {
     const odooUserId = users[0].id;
     const vendorName = users[0].name;
 
-    const leads = await odooExecute(
-      'crm.lead', 'search_read',
-      [ [
+    const leads = await searchRead(
+      'crm.lead',
+      [
         ['user_id', '=', odooUserId],
         ['active', '=', true],
         ['type', '=', 'opportunity'],
-      ] ],
+      ],
       {
         fields: ['name','stage_id','partner_id','planned_revenue','date_deadline','probability','date_last_stage_update','activity_date_deadline'],
         limit: 100,
@@ -79,12 +79,12 @@ export default async function handler(req, res) {
     const varadasTop = varadas.slice(0, 5);
 
     const ayerStr = new Date(hoy.getTime() - 86400000).toISOString().split('T')[0];
-    const actVencidas = await odooExecute(
-      'mail.activity', 'search_read',
-      [ [
+    const actVencidas = await searchRead(
+      'mail.activity',
+      [
         ['user_id', '=', odooUserId],
         ['date_deadline', '<=', ayerStr],
-      ] ],
+      ],
       { fields: ['summary','date_deadline','res_name','activity_type_id'], limit: 10 }
     );
 
