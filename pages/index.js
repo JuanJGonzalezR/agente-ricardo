@@ -30,6 +30,7 @@ export default function Home() {
   const [inputTexto, setInputTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [memoria, setMemoria] = useState(null);
+  const [odooContext, setOdooContext] = useState(null);
   const [busqueda, setBusqueda] = useState("");
   const [grabando, setGrabando] = useState(false);
   const reconocimientoRef = useRef(null);
@@ -82,6 +83,16 @@ export default function Home() {
       setMemoria(mem);
     } catch { console.log("Sin memoria previa"); }
 
+    try {
+      const resOdoo = await fetch(`/api/odoo/summary?clave=${v.clave}`);
+      const dataOdoo = await resOdoo.json();
+      if (dataOdoo && !dataOdoo.sinDatosOdoo && !dataOdoo.error) {
+        setOdooContext(dataOdoo);
+      } else {
+        setOdooContext(null);
+      }
+    } catch { setOdooContext(null); }
+
     const nombre = v.nombre.split(" ")[0];
     let inicial = "";
     if (esDir) {
@@ -121,6 +132,7 @@ export default function Home() {
           vendedor: vendedorSeleccionado.nombre,
           esDirector: vendedorSeleccionado.director || false,
           memoria,
+          odooContext,
         }),
       });
       const data = await res.json();
@@ -153,7 +165,7 @@ export default function Home() {
     setPantalla("inicio");
     setVendedorSeleccionado(null);
     setPin(""); setError(""); setIntentos(0);
-    setMensajes([]); setInputTexto(""); setMemoria(null); setBusqueda("");
+    setMensajes([]); setInputTexto(""); setMemoria(null); setOdooContext(null); setBusqueda("");
   };
 
   const toggleVoz = () => {
