@@ -50,7 +50,7 @@ export default async function handler(req, res) {
         ['type', '=', 'opportunity'],
       ],
       {
-        fields: ['name','stage_id','partner_id','planned_revenue','date_deadline','probability','date_last_stage_update','activity_date_deadline'],
+        fields: ['name','stage_id','partner_id','expected_revenue','date_deadline','probability','date_last_stage_update','activity_date_deadline'],
         limit: 100,
         order: 'date_last_stage_update asc',
       }
