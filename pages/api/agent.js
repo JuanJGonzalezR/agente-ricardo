@@ -3,7 +3,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Método no permitido" });
   }
 
-  const { mensajes, vendedor, esDirector, memoria } = req.body;
+  const { mensajes, vendedor, esDirector, memoria, odooContext } = req.body;
 
   if (!mensajes || !vendedor) {
     return res.status(400).json({ error: "Datos incompletos" });
@@ -89,7 +89,23 @@ Reglas del bloque:
 - Incluye solo los campos que de verdad conoces; "tipo" y "oportunidad" son el mínimo. Campos posibles: oportunidad, detalle, proximoPaso, contacto, etapa
 - ANTES del bloque, escribe una frase corta y natural confirmando lo que entendiste, y como mucho UNA pregunta de seguimiento si falta un dato clave de calidad (tomador de decisión o dolor). No bloquees el registro detrás de preguntas.
 - Cuando emitas este bloque, NO escribas además la línea vieja de "📋 Registro:" — el bloque la reemplaza.
-- Emite el bloque SOLO cuando haya una actividad concreta que registrar, no en conversación general ni cuando solo respondes preguntas.`;
+- Emite el bloque SOLO cuando haya una actividad concreta que registrar, no en conversación general ni cuando solo respondes preguntas.
+${odooContext && !odooContext.sinDatosOdoo ? `
+
+---CONTEXTO CRM EN TIEMPO REAL (datos reales de Odoo)---
+El vendedor ${odooContext.vendedor} tiene ${odooContext.totalOportunidades} oportunidades activas.
+Distribución por etapa: ${JSON.stringify(odooContext.porEtapa)}
+Oportunidades varadas (sin movimiento +7 días, las más críticas primero): ${JSON.stringify(odooContext.varadas)}
+Actividades vencidas: ${JSON.stringify(odooContext.actividadesVencidas)}
+
+Instrucciones para usar estos datos en el SALUDO INICIAL:
+- Menciona el total de oportunidades y destaca la etapa con más volumen.
+- Si hay oportunidades varadas, menciona la más crítica por nombre y cuántos días lleva sin movimiento.
+- Si hay actividades vencidas, menciónalas como alerta con el nombre de la oportunidad.
+- Sé directo y exigente, en el tono de Ricardo, pero sin abrumar: prioriza lo más urgente.
+- NO inventes datos. Si un campo dice "Sin cliente" o está vacío, ignóralo.
+- Usa los nombres de etapa TAL CUAL vienen en los datos, aunque tengan errores de ortografía.
+---FIN CONTEXTO CRM---` : ''}`;
 
   const systemPromptDirector = `Eres el Agente Ricardo en modo supervisor, asistente ejecutivo del Director Comercial Ricardo Gárate de Nanoschutz / Astralab.
 FECHA DE HOY: ${fechaHoy}. Usa siempre esta fecha cuando el usuario pregunte qué día es o cuando registres o agendes actividades. Nunca inventes la fecha.
