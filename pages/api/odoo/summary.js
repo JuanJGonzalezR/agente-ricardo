@@ -33,7 +33,7 @@ export default async function handler(req, res) {
   try {
     const users = await odooExecute(
       'res.users', 'search_read',
-      [[ [['login', '=', odooLogin]] ]],
+      [ [['login', '=', odooLogin]] ],
       { fields: ['id', 'name'], limit: 1 }
     );
     if (!users || !users.length) {
@@ -44,11 +44,11 @@ export default async function handler(req, res) {
 
     const leads = await odooExecute(
       'crm.lead', 'search_read',
-      [[ [
+      [ [
         ['user_id', '=', odooUserId],
         ['active', '=', true],
         ['type', '=', 'opportunity'],
-      ] ]],
+      ] ],
       {
         fields: ['name','stage_id','partner_id','planned_revenue','date_deadline','probability','date_last_stage_update','activity_date_deadline'],
         limit: 100,
@@ -60,7 +60,7 @@ export default async function handler(req, res) {
     const porEtapa = {};
     const varadas = [];
     for (const lead of leads) {
-      const etapa = lead.stage_id?.[1] || 'Sin etapa';
+      const etapa = lead.stage_id && lead.stage_id[1] ? lead.stage_id[1] : 'Sin etapa';
       porEtapa[etapa] = (porEtapa[etapa] || 0) + 1;
       if (lead.date_last_stage_update) {
         const diasSinMov = Math.floor((hoy - new Date(lead.date_last_stage_update)) / 86400000);
@@ -68,7 +68,7 @@ export default async function handler(req, res) {
           varadas.push({
             id: lead.id,
             nombre: lead.name,
-            cliente: lead.partner_id?.[1] || 'Sin cliente',
+            cliente: lead.partner_id && lead.partner_id[1] ? lead.partner_id[1] : 'Sin cliente',
             etapa,
             diasSinMovimiento: diasSinMov,
           });
@@ -81,10 +81,10 @@ export default async function handler(req, res) {
     const ayerStr = new Date(hoy.getTime() - 86400000).toISOString().split('T')[0];
     const actVencidas = await odooExecute(
       'mail.activity', 'search_read',
-      [[ [
+      [ [
         ['user_id', '=', odooUserId],
         ['date_deadline', '<=', ayerStr],
-      ] ]],
+      ] ],
       { fields: ['summary','date_deadline','res_name','activity_type_id'], limit: 10 }
     );
 
@@ -95,7 +95,7 @@ export default async function handler(req, res) {
       porEtapa,
       varadas: varadasTop,
       actividadesVencidas: (actVencidas || []).map(a => ({
-        descripcion: a.summary || a.activity_type_id?.[1] || 'Actividad',
+        descripcion: a.summary || (a.activity_type_id && a.activity_type_id[1]) || 'Actividad',
         oportunidad: a.res_name,
         vencio: a.date_deadline,
       })),
