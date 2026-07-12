@@ -83,10 +83,12 @@ export default function Home() {
       setMemoria(mem);
     } catch { console.log("Sin memoria previa"); }
 
+    let ctxOdoo = null;
     try {
       const resOdoo = await fetch(`/api/odoo/summary?clave=${v.clave}`);
       const dataOdoo = await resOdoo.json();
       if (dataOdoo && !dataOdoo.sinDatosOdoo && !dataOdoo.error) {
+        ctxOdoo = dataOdoo;
         setOdooContext(dataOdoo);
       } else {
         setOdooContext(null);
@@ -94,21 +96,37 @@ export default function Home() {
     } catch { setOdooContext(null); }
 
     const nombre = v.nombre.split(" ")[0];
-    let inicial = "";
     if (esDir) {
-      inicial = mem
+      const inicial = mem
         ? `Bienvenido Ricardo. Última sesión: ${new Date(mem.ultimaSesion).toLocaleDateString("es-MX")}.\n\n¿Qué revisamos hoy — equipo, un vendedor o las alertas del día?`
         : `Buenos días Ricardo. ¿Qué quieres revisar hoy — el estado general del equipo, un vendedor específico, o las alertas del día?`;
-    } else if (mem && mem.sesiones > 0) {
-      const lista = mem.pendientes?.length > 0
-        ? `Tienes estos pendientes:\n${mem.pendientes.map((x) => `• ${x}`).join("\n")}\n\n¿Avanzaste con alguno?`
-        : "No me quedaron pendientes anotados de la última vez. ¿Qué hiciste hoy?";
-      inicial = `Hola ${nombre}, bienvenido de vuelta.\n\n${lista}`;
+      setMensajes([{ role: "assistant", content: inicial }]);
+      setPantalla("agente");
     } else {
-      inicial = `Hola ${nombre}. Soy tu agente de ventas. ¿Qué hiciste hoy o qué tienes agendado? Cuéntame y yo te ayudo a registrarlo.`;
+      setMensajes([{ role: "assistant", content: "..." }]);
+      setPantalla("agente");
+      setEnviando(true);
+
+      try {
+        const resSaludo = await fetch("/api/agent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mensajes: [{ role: "user", content: "[SALUDO_INICIAL] Salúdame para arrancar la sesión. Usa mi pipeline real y mis pendientes. Sé breve y directo: menciona el total de oportunidades, la etapa con más volumen, la oportunidad varada más crítica y las actividades vencidas si las hay. Termina con una pregunta que me empuje a la acción. No menciones que esto es un saludo automático." }],
+            vendedor: v.nombre,
+            esDirector: false,
+            memoria: mem,
+            odooContext: ctxOdoo,
+          }),
+        });
+        const dataSaludo = await resSaludo.json();
+        const texto = dataSaludo.respuesta || `Hola ${nombre}. ¿Qué hiciste hoy?`;
+        setMensajes([{ role: "assistant", content: texto }]);
+      } catch {
+        setMensajes([{ role: "assistant", content: `Hola ${nombre}. ¿Qué hiciste hoy?` }]);
+      }
+      setEnviando(false);
     }
-    setMensajes([{ role: "assistant", content: inicial }]);
-    setPantalla("agente");
   };
 
   const enviarMensaje = async (texto) => {
