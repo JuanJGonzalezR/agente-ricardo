@@ -3,7 +3,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Método no permitido" });
   }
 
-  const { mensajes, vendedor, esDirector, memoria, odooContext } = req.body;
+  const { mensajes, vendedor, esDirector, memoria, odooContext, teamContext } = req.body;
 
   if (!mensajes || !vendedor) {
     return res.status(400).json({ error: "Datos incompletos" });
@@ -122,6 +122,25 @@ PIPELINE: Prospectos → Entrevista Tomador → Demo de Productos → Propuesta 
 
 SEMÁFORO: Verde 90%+ | Amarillo 70-89% | Rojo 0-69%
 ${contextoMemoria}
+${teamContext && !teamContext.sinDatosOdoo ? `
+
+---ESTADO REAL DEL EQUIPO (datos vivos de Odoo)---
+Total del equipo: ${teamContext.totalOportunidadesEquipo} oportunidades activas entre ${teamContext.totalVendedores} vendedores.
+Oportunidades varadas en todo el equipo (sin movimiento +7 días): ${teamContext.totalVaradasEquipo}
+Actividades vencidas en todo el equipo: ${teamContext.totalActividadesVencidasEquipo}
+Distribución por etapa: ${JSON.stringify(teamContext.etapasEquipo)}
+
+Vendedores en mayor riesgo (ordenados de peor a mejor): ${JSON.stringify(teamContext.enRiesgo)}
+
+Todos los vendedores: ${JSON.stringify(teamContext.vendedores)}
+
+Instrucciones:
+- Usa SIEMPRE estos datos reales. No inventes cifras.
+- Nombra a los vendedores por su primer nombre o apodo conocido, no por su nombre completo.
+- Señala al vendedor más crítico por nombre, con su número de varadas.
+- Si un vendedor tiene 0 oportunidades, NO lo señales como problema: puede ser un tema de configuración pendiente, no de desempeño.
+- Prioriza lo accionable: qué debe atacarse hoy.
+---FIN ESTADO DEL EQUIPO---` : ''}
 
 TU ROL:
 - Resumen ejecutivo del equipo

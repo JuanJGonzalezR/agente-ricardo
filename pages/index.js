@@ -31,6 +31,7 @@ export default function Home() {
   const [enviando, setEnviando] = useState(false);
   const [memoria, setMemoria] = useState(null);
   const [odooContext, setOdooContext] = useState(null);
+  const [teamContext, setTeamContext] = useState(null);
   const [busqueda, setBusqueda] = useState("");
   const [grabando, setGrabando] = useState(false);
   const reconocimientoRef = useRef(null);
@@ -97,11 +98,37 @@ export default function Home() {
 
     const nombre = v.nombre.split(" ")[0];
     if (esDir) {
-      const inicial = mem
-        ? `Bienvenido Ricardo. Última sesión: ${new Date(mem.ultimaSesion).toLocaleDateString("es-MX")}.\n\n¿Qué revisamos hoy — equipo, un vendedor o las alertas del día?`
-        : `Buenos días Ricardo. ¿Qué quieres revisar hoy — el estado general del equipo, un vendedor específico, o las alertas del día?`;
-      setMensajes([{ role: "assistant", content: inicial }]);
+      let ctxTeam = null;
+      try {
+        const resTeam = await fetch('/api/odoo/team');
+        const dataTeam = await resTeam.json();
+        if (dataTeam && !dataTeam.sinDatosOdoo && !dataTeam.error) {
+          ctxTeam = dataTeam;
+          setTeamContext(dataTeam);
+        }
+      } catch { setTeamContext(null); }
+
+      setMensajes([{ role: "assistant", content: "..." }]);
       setPantalla("agente");
+      setEnviando(true);
+      try {
+        const resSaludo = await fetch("/api/agent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mensajes: [{ role: "user", content: "[SALUDO_INICIAL] Dame el estado del equipo para arrancar el día. Breve y directo: total de oportunidades, cuántas varadas hay en total, quién es el vendedor más crítico y por qué, y las actividades vencidas. Termina con una acción concreta para hoy. No menciones que esto es un saludo automático." }],
+            vendedor: v.nombre,
+            esDirector: true,
+            memoria: mem,
+            teamContext: ctxTeam,
+          }),
+        });
+        const dataSaludo = await resSaludo.json();
+        setMensajes([{ role: "assistant", content: dataSaludo.respuesta || "Bienvenido Ricardo. ¿Qué revisamos hoy?" }]);
+      } catch {
+        setMensajes([{ role: "assistant", content: "Bienvenido Ricardo. ¿Qué revisamos hoy?" }]);
+      }
+      setEnviando(false);
     } else {
       setMensajes([{ role: "assistant", content: "..." }]);
       setPantalla("agente");
@@ -151,6 +178,7 @@ export default function Home() {
           esDirector: vendedorSeleccionado.director || false,
           memoria,
           odooContext,
+          teamContext,
         }),
       });
       const data = await res.json();
@@ -183,7 +211,7 @@ export default function Home() {
     setPantalla("inicio");
     setVendedorSeleccionado(null);
     setPin(""); setError(""); setIntentos(0);
-    setMensajes([]); setInputTexto(""); setMemoria(null); setOdooContext(null); setBusqueda("");
+    setMensajes([]); setInputTexto(""); setMemoria(null); setOdooContext(null); setTeamContext(null); setBusqueda("");
   };
 
   const toggleVoz = () => {
