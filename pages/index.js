@@ -17,7 +17,7 @@ const VENDEDORES = [
   { nombre: "Ricardo Gárate", clave: "RICARDO", inicial: "RG", director: true },
 ];
 
-const COLOR_SEMAFORO = { rojo: "#E5484D", amarillo: "#F5A623", verde: "#1FBF75" };
+const COLOR_SEMAFORO = { rojo: "#E5484D", amarillo: "#F5A623", verde: "#1FBF75", gris: "#3A4450" };
 
 export default function Home() {
   const [pantalla, setPantalla] = useState("inicio");
@@ -32,6 +32,7 @@ export default function Home() {
   const [memoria, setMemoria] = useState(null);
   const [odooContext, setOdooContext] = useState(null);
   const [teamContext, setTeamContext] = useState(null);
+  const [semaforos, setSemaforos] = useState(null);
   const [busqueda, setBusqueda] = useState("");
   const [grabando, setGrabando] = useState(false);
   const reconocimientoRef = useRef(null);
@@ -41,6 +42,29 @@ export default function Home() {
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [mensajes, enviando]);
+
+  useEffect(() => {
+    const cargarSemaforos = async () => {
+      try {
+        const res = await fetch('/api/odoo/team');
+        const data = await res.json();
+        if (!data || data.sinDatosOdoo || !data.vendedores) return;
+        const mapa = {};
+        for (const v of data.vendedores) {
+          if (v.oportunidades === 0) {
+            mapa[v.clave] = "gris";
+          } else {
+            const pctVaradas = v.varadas / v.oportunidades;
+            if (pctVaradas > 0.6 || v.actividadesVencidas > 0) mapa[v.clave] = "rojo";
+            else if (pctVaradas >= 0.3) mapa[v.clave] = "amarillo";
+            else mapa[v.clave] = "verde";
+          }
+        }
+        setSemaforos(mapa);
+      } catch { /* si falla, se usan los colores por defecto */ }
+    };
+    cargarSemaforos();
+  }, []);
 
   const seleccionarVendedor = (v) => {
     setVendedorSeleccionado(v);
@@ -302,7 +326,7 @@ export default function Home() {
             <button key={v.clave} style={s.card} onClick={() => seleccionarVendedor(v)}>
               <div style={s.avatar}>{v.inicial}</div>
               <span style={s.nombreCard}>{v.nombre}</span>
-              <span style={{ ...s.semaforoDot, backgroundColor: COLOR_SEMAFORO[v.semaforo] }} />
+              <span style={{ ...s.semaforoDot, backgroundColor: COLOR_SEMAFORO[(semaforos && semaforos[v.clave]) || v.semaforo] }} />
               <span style={s.chevron}>›</span>
             </button>
           ))}
@@ -356,7 +380,7 @@ export default function Home() {
   // ── AGENTE ───────────────────────────────────────────────
   if (pantalla === "agente") {
     const esDir = vendedorSeleccionado.director;
-    const colorSem = esDir ? "#00D9C0" : COLOR_SEMAFORO[vendedorSeleccionado.semaforo];
+    const colorSem = esDir ? "#00D9C0" : COLOR_SEMAFORO[(semaforos && semaforos[vendedorSeleccionado.clave]) || vendedorSeleccionado.semaforo];
     const chips = esDir
       ? ["Estado del equipo", "Alertas del día", "Quién está en riesgo"]
       : ["Registrar visita", "Agendar", "Mis pendientes"];
