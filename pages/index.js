@@ -382,7 +382,7 @@ export default function Home() {
     const esDir = vendedorSeleccionado.director;
     const colorSem = esDir ? "#00D9C0" : COLOR_SEMAFORO[(semaforos && semaforos[vendedorSeleccionado.clave]) || vendedorSeleccionado.semaforo];
     const chips = esDir
-      ? ["Quién está en riesgo", "Top de varadas", "¿Cómo va Jorge?"]
+      ? ["Quién está en riesgo", "Top de varadas", "¿Cómo va Rodrigo?"]
       : ["Registrar visita", "Agendar", "Mis pendientes"];
 
     return (
