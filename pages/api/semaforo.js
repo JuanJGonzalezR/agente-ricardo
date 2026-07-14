@@ -1,9 +1,12 @@
 // pages/api/semaforo.js
 // Lee el Semáforo Comercial del dashboard (fuente de verdad) y extrae
-// solo lo esencial para el agente: score, color y desglose por bloque.
+// lo esencial para el agente, priorizando por PUNTOS RECUPERABLES por KPI.
 //
-// GET /api/semaforo?clave=JORGE_E   -> semáforo de un vendedor
-// GET /api/semaforo                 -> semáforo de todo el equipo (director)
+// Formula de priorizacion (documento maestro de Ricardo):
+//   puntos recuperables = peso x (100 - scoreKPI) / 100
+//
+// GET /api/semaforo?clave=JORGE_E   -> semaforo de un vendedor
+// GET /api/semaforo                 -> semaforo del equipo (director)
 
 import { Redis } from '@upstash/redis';
 import { getOdooLogin } from '../../lib/odoo';
@@ -13,10 +16,12 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN,
 });
 
-const CACHE_TTL = 600; // 10 minutos
+const CACHE_TTL = 600;
 const CACHE_KEY = 'dashboard:semaforo';
 
-// Trae el reporte completo del dashboard (cacheado)
+// KPIs informativos: pesan 0, NO suman puntos. Nunca recomendarlos.
+const INFORMATIVOS = ['Seguimiento Continuo', 'Diferencia entre Meta y Presupuesto'];
+
 async function getReporte() {
   try {
     const cached = await redis.get(CACHE_KEY);
@@ -31,9 +36,8 @@ async function getReporte() {
     headers: { 'X-API-Key': key },
   });
   const data = await res.json();
-  if (!data.ok) throw new Error('Dashboard respondio: ' + (data.message || 'error'));
+  if (!data.ok) throw new Error('Dashboard: ' + (data.message || 'error'));
 
-  // Extraemos SOLO lo esencial de cada vendedor (el reporte completo pesa 240KB)
   const compacto = {
     generadoEn: data.generatedAt,
     periodo: data.period?.label || '',
@@ -46,13 +50,13 @@ async function getReporte() {
         titulo: b.title,
         peso: b.weight,
         puntos: b.points,
-        // por cada KPI: cuánto va vs cuánto debería ir
         kpis: (b.items || []).map((i) => ({
           kpi: i.label,
+          peso: i.weight,
           real: i.valueLabel ?? i.value,
           metaHoy: i.targetTodayLabel ?? i.target,
           metaMes: i.targetMonthLabel ?? i.targetMonth,
-          score: i.score,
+          scoreKPI: i.score,
         })),
       })),
     })),
@@ -60,6 +64,48 @@ async function getReporte() {
 
   try { await redis.set(CACHE_KEY, compacto, { ex: CACHE_TTL }); } catch {}
   return compacto;
+}
+
+// Calcula los puntos recuperables de cada KPI y los ordena por impacto.
+// Excluye: KPIs informativos (peso 0) y los que ya estan en 100%.
+function oportunidadesDeMejora(v) {
+  const lista = [];
+  for (const b of v.bloques || []) {
+    for (const k of b.kpis || []) {
+      const peso = k.peso || 0;
+      if (peso === 0) continue;                    // informativo, no suma
+      if (INFORMATIVOS.includes(k.kpi)) continue;
+      const score = k.scoreKPI || 0;
+      if (score >= 100) continue;                  // ya topado, no da puntos extra
+      const recuperables = +(peso * (100 - score) / 100).toFixed(1);
+      if (recuperables <= 0) continue;
+      lista.push({
+        kpi: k.kpi,
+        bloque: b.titulo,
+        peso,
+        scoreActual: score,
+        real: k.real,
+        metaHoy: k.metaHoy,
+        puntosRecuperables: recuperables,
+      });
+    }
+  }
+  lista.sort((a, b) => b.puntosRecuperables - a.puntosRecuperables);
+  return lista;
+}
+
+// Color segun los umbrales OFICIALES del dashboard
+function colorPorScore(score) {
+  if (score >= 90) return 'Verde';
+  if (score >= 70) return 'Amarillo';
+  return 'Rojo';
+}
+
+// Cuanto le falta para el SIGUIENTE nivel (no siempre es 90)
+function siguienteNivel(score) {
+  if (score >= 90) return { nivel: 'Verde', faltan: 0 };
+  if (score >= 70) return { nivel: 'Verde', faltan: +(90 - score).toFixed(1) };
+  return { nivel: 'Amarillo', faltan: +(70 - score).toFixed(1) };
 }
 
 export default async function handler(req, res) {
@@ -73,58 +119,56 @@ export default async function handler(req, res) {
     const rep = await getReporte();
     const { clave } = req.query;
 
-    // Sin clave: devuelve el equipo completo (para el director)
     if (!clave) {
       return res.status(200).json({
         periodo: rep.periodo,
         generadoEn: rep.generadoEn,
-        equipo: rep.vendedores.map((v) => ({
-          nombre: v.nombre,
-          score: v.score,
-          estado: v.estado,
-          // el bloque donde más puntos está perdiendo
-          peorBloque: peorBloque(v),
-        })),
+        umbrales: { verde: '90+', amarillo: '70-89.9', rojo: '<70' },
+        equipo: rep.vendedores.map((v) => {
+          const sig = siguienteNivel(v.score);
+          const op = oportunidadesDeMejora(v);
+          return {
+            nombre: v.nombre,
+            score: v.score,
+            estado: v.estado,
+            siguienteNivel: sig.nivel,
+            puntosParaSiguienteNivel: sig.faltan,
+            mayorOportunidad: op[0] || null,
+          };
+        }),
       });
     }
 
-    // Con clave: devuelve el semáforo de ese vendedor
     const login = getOdooLogin(clave);
-    if (!login) {
-      return res.status(200).json({ sinSemaforo: true, razon: 'vendedor no mapeado' });
-    }
+    if (!login) return res.status(200).json({ sinSemaforo: true, razon: 'vendedor no mapeado' });
 
     const v = rep.vendedores.find((x) => x.login === login);
-    if (!v) {
-      return res.status(200).json({ sinSemaforo: true, razon: 'vendedor no esta en el semaforo del dashboard' });
-    }
+    if (!v) return res.status(200).json({ sinSemaforo: true, razon: 'vendedor no esta en el semaforo' });
+
+    const sig = siguienteNivel(v.score);
+    const op = oportunidadesDeMejora(v);
 
     return res.status(200).json({
       nombre: v.nombre,
       score: v.score,
       estado: v.estado,
-      metaMinima: 90,
       periodo: rep.periodo,
-      bloques: v.bloques,
-      peorBloque: peorBloque(v),
-      puntosQueFaltan: Math.max(0, 90 - v.score).toFixed(1),
+      umbrales: { verde: '90+', amarillo: '70-89.9', rojo: '<70' },
+      siguienteNivel: sig.nivel,
+      puntosParaSiguienteNivel: sig.faltan,
+      // Los 4 bloques con sus puntos
+      bloques: v.bloques.map((b) => ({
+        titulo: b.titulo,
+        peso: b.peso,
+        puntos: b.puntos,
+        puntosFaltantes: +((b.peso || 0) - (b.puntos || 0)).toFixed(1),
+      })),
+      // LO MAS IMPORTANTE: donde estan los puntos, ordenados por impacto
+      oportunidadesDeMejora: op.slice(0, 6),
     });
 
   } catch (err) {
     console.error('[semaforo] error:', err.message);
     return res.status(200).json({ sinSemaforo: true, razon: err.message });
   }
-}
-
-// Identifica en qué bloque el vendedor está dejando más puntos sobre la mesa
-function peorBloque(v) {
-  if (!v.bloques || !v.bloques.length) return null;
-  let peor = null;
-  for (const b of v.bloques) {
-    const perdidos = (b.peso || 0) - (b.puntos || 0);
-    if (!peor || perdidos > peor.puntosPerdidos) {
-      peor = { titulo: b.titulo, peso: b.peso, puntos: b.puntos, puntosPerdidos: +perdidos.toFixed(1) };
-    }
-  }
-  return peor;
 }
