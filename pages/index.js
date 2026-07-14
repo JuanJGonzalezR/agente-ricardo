@@ -145,8 +145,9 @@ export default function Home() {
         }
       } catch { setTeamContext(null); }
 
+      let ctxSem = null;
       try {
-        const resSem = await fetch("/api/semaforo");
+        const resSem = await fetch('/api/semaforo');
         const dataSem = await resSem.json();
         if (dataSem && !dataSem.sinSemaforo && !dataSem.error) {
           ctxSem = dataSem;
@@ -162,7 +163,7 @@ export default function Home() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            mensajes: [{ role: "user", content: "[SALUDO_INICIAL] Dame el estado del equipo para arrancar el día. Breve y directo: total de oportunidades, cuántas varadas hay en total, quién es el vendedor más crítico y por qué, y las actividades vencidas. Termina con una acción concreta para hoy. No menciones que esto es un saludo automático." }],
+            mensajes: [{ role: "user", content: "[SALUDO_INICIAL] Dame el estado del equipo para arrancar el día. Menciona cuántos vendedores están en rojo, quién tiene el score más bajo y quién el más alto, el total de oportunidades varadas del equipo, y la acción concreta de hoy. Máximo 6 líneas. No menciones que esto es un saludo automático." }],
             vendedor: v.nombre,
             esDirector: true,
             memoria: mem,
@@ -186,7 +187,7 @@ export default function Home() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            mensajes: [{ role: "user", content: "[SALUDO_INICIAL] Salúdame para arrancar la sesión. Usa mi pipeline real y mis pendientes. Sé breve y directo: menciona el total de oportunidades, la etapa con más volumen, la oportunidad varada más crítica y las actividades vencidas si las hay. Termina con una pregunta que me empuje a la acción. No menciones que esto es un saludo automático." }],
+            mensajes: [{ role: "user", content: "[SALUDO_INICIAL] Salúdame para arrancar la sesión. Menciona mi score del semáforo y mi estado (verde/amarillo/rojo), cuántos puntos me faltan para el siguiente nivel, y la acción de mayor impacto que puedo hacer hoy según mis puntos recuperables. Menciona también mi oportunidad varada más crítica si la hay. Máximo 6 líneas. Termina con una pregunta que me empuje a la acción. No menciones que esto es un saludo automático." }],
             vendedor: v.nombre,
             esDirector: false,
             memoria: mem,
