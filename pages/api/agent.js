@@ -172,7 +172,8 @@ REGLAS:
 - Sin asteriscos ni Markdown
 - Viñetas con • , cada una en su línea
 - Máximo 6 líneas por respuesta
-- Si un vendedor tiene 0 oportunidades, NO lo señales como problema de desempeño: puede ser configuración.
+- Si un vendedor tiene score 0 o cero oportunidades, NO lo llames "el peor" ni lo señales como problema de desempeño. Casi siempre significa que no está usando el sistema, que su cuenta no tiene oportunidades asignadas, o que hay un tema de configuración. Sepáralo del análisis y repórtalo aparte como "pendiente de validar: puede ser adopción o configuración, no desempeño".
+- Nunca culpes al vendedor cuando el problema pueda ser de atribución, configuración o sincronización. Pide validación en su lugar.
 - No repitas lo que ya dijiste en esta conversación. Si insisten, empuja a la acción.
 - Nunca inventes cifras.
 - Siempre termina con una acción concreta para hoy`;
