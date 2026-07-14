@@ -121,18 +121,17 @@ export default function Home() {
       }
     } catch { setOdooContext(null); }
 
-    let ctxSemaforo = null;
-    try {
-      const urlSemaforo = esDir ? "/api/semaforo" : `/api/semaforo?clave=${v.clave}`;
-      const resSemaforo = await fetch(urlSemaforo);
-      const dataSemaforo = await resSemaforo.json();
-      if (dataSemaforo && !dataSemaforo.sinSemaforo) {
-        ctxSemaforo = dataSemaforo;
-        setSemaforoContext(dataSemaforo);
-      } else {
-        setSemaforoContext(null);
-      }
-    } catch { setSemaforoContext(null); }
+    let ctxSem = null;
+    if (!esDir) {
+      try {
+        const resSem = await fetch(`/api/semaforo?clave=${v.clave}`);
+        const dataSem = await resSem.json();
+        if (dataSem && !dataSem.sinSemaforo && !dataSem.error) {
+          ctxSem = dataSem;
+          setSemaforoContext(dataSem);
+        }
+      } catch { setSemaforoContext(null); }
+    }
 
     const nombre = v.nombre.split(" ")[0];
     if (esDir) {
@@ -145,6 +144,15 @@ export default function Home() {
           setTeamContext(dataTeam);
         }
       } catch { setTeamContext(null); }
+
+      try {
+        const resSem = await fetch("/api/semaforo");
+        const dataSem = await resSem.json();
+        if (dataSem && !dataSem.sinSemaforo && !dataSem.error) {
+          ctxSem = dataSem;
+          setSemaforoContext(dataSem);
+        }
+      } catch { setSemaforoContext(null); }
 
       setMensajes([{ role: "assistant", content: "..." }]);
       setPantalla("agente");
@@ -159,7 +167,7 @@ export default function Home() {
             esDirector: true,
             memoria: mem,
             teamContext: ctxTeam,
-            semaforoContext: ctxSemaforo,
+            semaforoContext: ctxSem,
           }),
         });
         const dataSaludo = await resSaludo.json();
@@ -183,7 +191,7 @@ export default function Home() {
             esDirector: false,
             memoria: mem,
             odooContext: ctxOdoo,
-            semaforoContext: ctxSemaforo,
+            semaforoContext: ctxSem,
           }),
         });
         const dataSaludo = await resSaludo.json();
