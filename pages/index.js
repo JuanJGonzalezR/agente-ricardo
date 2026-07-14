@@ -32,6 +32,7 @@ export default function Home() {
   const [memoria, setMemoria] = useState(null);
   const [odooContext, setOdooContext] = useState(null);
   const [teamContext, setTeamContext] = useState(null);
+  const [semaforoContext, setSemaforoContext] = useState(null);
   const [semaforos, setSemaforos] = useState(null);
   const [busqueda, setBusqueda] = useState("");
   const [grabando, setGrabando] = useState(false);
@@ -120,6 +121,19 @@ export default function Home() {
       }
     } catch { setOdooContext(null); }
 
+    let ctxSemaforo = null;
+    try {
+      const urlSemaforo = esDir ? "/api/semaforo" : `/api/semaforo?clave=${v.clave}`;
+      const resSemaforo = await fetch(urlSemaforo);
+      const dataSemaforo = await resSemaforo.json();
+      if (dataSemaforo && !dataSemaforo.sinSemaforo) {
+        ctxSemaforo = dataSemaforo;
+        setSemaforoContext(dataSemaforo);
+      } else {
+        setSemaforoContext(null);
+      }
+    } catch { setSemaforoContext(null); }
+
     const nombre = v.nombre.split(" ")[0];
     if (esDir) {
       let ctxTeam = null;
@@ -145,6 +159,7 @@ export default function Home() {
             esDirector: true,
             memoria: mem,
             teamContext: ctxTeam,
+            semaforoContext: ctxSemaforo,
           }),
         });
         const dataSaludo = await resSaludo.json();
@@ -168,6 +183,7 @@ export default function Home() {
             esDirector: false,
             memoria: mem,
             odooContext: ctxOdoo,
+            semaforoContext: ctxSemaforo,
           }),
         });
         const dataSaludo = await resSaludo.json();
@@ -203,6 +219,7 @@ export default function Home() {
           memoria,
           odooContext,
           teamContext,
+          semaforoContext,
         }),
       });
       const data = await res.json();
@@ -235,7 +252,7 @@ export default function Home() {
     setPantalla("inicio");
     setVendedorSeleccionado(null);
     setPin(""); setError(""); setIntentos(0);
-    setMensajes([]); setInputTexto(""); setMemoria(null); setOdooContext(null); setTeamContext(null); setBusqueda("");
+    setMensajes([]); setInputTexto(""); setMemoria(null); setOdooContext(null); setTeamContext(null); setSemaforoContext(null); setBusqueda("");
   };
 
   const toggleVoz = () => {
